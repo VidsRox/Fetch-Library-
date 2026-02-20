@@ -3,6 +3,40 @@
 #include "network.h"
 #include "utils.h"
 #include "stdlib.h" 
+#include "../concurrency/thread_pool.h"
+
+static ThreadPool pool;
+
+void fetch_init(int num_workers){
+    thread_pool_init(&pool, num_workers, 64);
+}
+
+void fetch_cleanup(){
+    thread_pool_destroy(&pool);
+}
+
+void fetch_worker(void* arg){
+    FetchTaskArg* fetch_arg = (FetchTaskArg*)arg;
+
+    Response* resp = fetch_sync(fetch_arg->request);
+
+    fetch_arg->callback(resp, fetch_arg->context);
+    free(fetch_arg);
+}
+
+void fetch_async(Request* req, fetch_callback callback, void* context){
+    FetchTaskArg* fetch_arg = (FetchTaskArg*)malloc(sizeof(FetchTaskArg));
+
+    fetch_arg->callback = callback;
+    fetch_arg->request = req;
+    fetch_arg->context = context;
+
+    Task* task = (Task*)malloc(sizeof(Task));
+    task->function = fetch_worker;
+    task->arg = fetch_arg;
+
+    thread_pool_submit(&pool, task);
+}
 
 //execute a complete HTTP request/response cycle
 

@@ -27,4 +27,18 @@ Any other allocated memory*/
 
 void free_response(Response *resp);
 
+typedef void (*fetch_callback)(Response* resp, void* context);
+
+typedef struct{
+    Request* request;
+    fetch_callback callback;
+    void* context;
+} FetchTaskArg;
+
+void fetch_init(int num_workers);
+
+void fetch_cleanup();
+
+void fetch_async(Request* req, fetch_callback callback, void* context);
+
 #endif  // FETCH_H
